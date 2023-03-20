@@ -19,7 +19,7 @@ Quick load
 The first way to load data is to simply use the methods `load` and
 `loadf`:
 ```python
->>> from nitorch import io
+>>> import nitorch_io as io
 >>> dat = io.load('path/to/my/nifti_file.nii.gz')
 >>> type(dat), dat.dtype
 (torch.Tensor, torch.int16)

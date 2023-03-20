@@ -1,9 +1,4 @@
-# nitorch-io
-Read and write neuroimaging file formats
-
-## Work in Progress
-This is an attempt to extract the `io` component from `nitorch`.
-
+"""
 Reading and writing arrays
 ==========================
 
@@ -203,3 +198,18 @@ keyword attributes.
 >>> slice = file[:, :, 0]
 >>> save(slice, 'path/to/my/new/nifti_file.nii.gz')
 ```
+
+"""
+
+from . import loadsave
+from . import volumes
+from . import metadata
+from . import optionals
+from . import readers
+from . import transforms
+from . import utils
+from . import writers
+
+from .volumes import MappedArray, CatArray, cat, stack
+from .transforms import MappedAffine
+from .loadsave import map, load, loadf, save, savef

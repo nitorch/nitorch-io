@@ -1358,3 +1358,58 @@ def affine_reorient(mat, shape_or_tensor=None, layout=None):
         return mat, tensor
     else:
         return (mat, tuple(shape)) if shape else mat
+
+
+def compute_fov(mat, affines, shapes, pad=0, pad_unit='%'):
+    """Compute the bounding box of spaces when projected in a target space.
+
+    Parameters
+    ----------
+    mat : (D+1, D+1) tensor_like
+        Output orientation matrix (up to a shift)
+    affines : (N, D+1, D+1), tensor_like
+        Input orientation matrices
+    shapes : (N, D) tensor_like[int]
+        Input shapes
+    pad : [sequence of] float, default=0
+        Amount of padding (or cropping) to add to the bounding box.
+    pad_unit : [sequence of] {'mm', '%'}, default='%'
+        Unit of the padding/cropping.
+
+    Returns
+    -------
+    mn : (D,) tensor
+        Minimum coordinates, in voxels (without floor/ceil)
+    mx : (D,) tensor
+        Maximum coordinates, in voxels (without floor/ceil)
+
+    """
+    mat = utils.as_tensor(mat)
+    backend = dict(device=mat.device, dtype=mat.dtype)
+    affines = utils.as_tensor(affines, **backend)
+    shapes = utils.as_tensor(shapes, **backend)
+    affines.reshape([-1, *affines.shape[-2:]])
+    shapes.reshape([-1, shapes.shape[-1]])
+    shapes = shapes.expand([len(affines), shapes.shape[-1]])
+    dim = mat.shape[-1] - 1
+
+    mn = torch.full([dim], float('inf'), **backend)
+    mx = torch.full([dim], -float('inf'), **backend)
+    for a_mat, a_shape in zip(affines, shapes):
+        corners = itertools.product([False, True], r=dim)
+        corners = [[a_shape[i] if top else 1 for i, top in enumerate(c)] + [1]
+                   for c in corners]
+        corners = torch.as_tensor(corners, **backend).T
+        M = linalg.lmdiv(mat, a_mat)
+        corners = torch.matmul(M[:dim, :], corners)
+        mx = torch.max(mx, torch.max(corners, dim=1)[0])
+        mn = torch.min(mn, torch.min(corners, dim=1)[0])
+    if pad is None:
+        pad = 0
+    pad = utils.make_vector(pad, dim, **backend)
+    if pad_unit == '%':
+        pad = pad / 100.
+        pad = pad * (mx - mn) / 2.
+    mx = mx + pad
+    mn = mn - pad
+    return mn, mx
